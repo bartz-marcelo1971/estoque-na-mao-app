@@ -1,8 +1,7 @@
-
 import { useState, useEffect, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
-import { Product, saveProduct, getProductByName } from "@/lib/storage";
+import { Product, saveProduct, getProductByName, deleteProduct } from "@/lib/storage";
 import SearchModal from "@/components/SearchModal";
 import EditModal from "@/components/EditModal";
 
@@ -11,14 +10,15 @@ const Products = () => {
   const [quantity, setQuantity] = useState("");
   const [location, setLocation] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
-  
+  const [minimumStock, setMinimumStock] = useState("");
+
   const [searchProduct, setSearchProduct] = useState<Product | null>(null);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [showSaveMessage, setShowSaveMessage] = useState(false);
   const [showDeleteMessage, setShowDeleteMessage] = useState(false);
-  
+
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -53,6 +53,7 @@ const Products = () => {
       quantity,
       location,
       expiryDate,
+      minimumStock,
     };
 
     saveProduct(product);
@@ -103,7 +104,25 @@ const Products = () => {
   };
 
   const handleDelete = () => {
-    setShowDeleteMessage(true);
+    if (!productName.trim()) {
+      toast({
+        title: "Erro",
+        description: "Digite o nome do produto para deletar",
+      });
+      return;
+    }
+
+    const product = getProductByName(productName);
+    if (product) {
+      deleteProduct(productName);
+      setShowDeleteMessage(true);
+      clearForm();
+    } else {
+      toast({
+        title: "Produto não encontrado",
+        description: "Nenhum produto com esse nome foi encontrado",
+      });
+    }
   };
 
   const handleExit = () => {
@@ -115,6 +134,7 @@ const Products = () => {
     setQuantity("");
     setLocation("");
     setExpiryDate("");
+    setMinimumStock("");
   };
 
   return (
@@ -156,7 +176,38 @@ const Products = () => {
               className="w-full p-3 rounded bg-[#444444] text-white"
               placeholder="Data de Validade"
               value={expiryDate}
-              onChange={(e) => setExpiryDate(e.target.value)}
+              onChange={(e) => {
+                // Remove caracteres não numéricos da entrada
+                const numbersOnly = e.target.value.replace(/\D/g, '');
+
+                // Aplica a máscara DD/MM/AAAA
+                let formattedDate = '';
+                if (numbersOnly.length > 0) {
+                  formattedDate += numbersOnly.substring(0, 2);
+                }
+                if (numbersOnly.length > 2) {
+                  formattedDate += '/' + numbersOnly.substring(2, 4);
+                }
+                if (numbersOnly.length > 4) {
+                  formattedDate += '/' + numbersOnly.substring(4, 8);
+                }
+
+                setExpiryDate(formattedDate);
+              }}
+              maxLength={10}
+            />
+          </div>
+          <div>
+            <input
+              type="text"
+              className="w-full p-3 rounded bg-[#444444] text-white"
+              placeholder="Limite Mínimo de Estoque"
+              value={minimumStock}
+              onChange={(e) => {
+                // Aceitar apenas números
+                const value = e.target.value.replace(/\D/g, '');
+                setMinimumStock(value);
+              }}
             />
           </div>
 
@@ -194,6 +245,13 @@ const Products = () => {
               className="w-full py-3 bg-[#444444] text-white text-xl font-bold rounded"
             >
               Sair
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/lista-compras')}
+              className="w-full py-3 bg-[#444444] text-white text-xl font-bold rounded"
+            >
+              Lista de Compras
             </button>
           </div>
         </form>

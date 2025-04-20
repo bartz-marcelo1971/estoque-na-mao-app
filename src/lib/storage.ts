@@ -1,12 +1,13 @@
-
 export interface Product {
   name: string;
   quantity: string;
   location: string;
   expiryDate: string;
+  minimumStock: string;
 }
 
 const STORAGE_KEY = 'stock-na-mao-products';
+const SHOPPING_LIST_KEY = 'stock-na-mao-shopping-list';
 
 export const saveProduct = (product: Product): void => {
   const products = getProducts();
@@ -19,6 +20,8 @@ export const saveProduct = (product: Product): void => {
   }
   
   localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+  
+  updateShoppingList();
 };
 
 export const getProducts = (): Product[] => {
@@ -39,4 +42,18 @@ export const deleteProduct = (name: string): boolean => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(filteredProducts));
   
   return initialLength > filteredProducts.length;
+};
+
+export const getLowStockProducts = (): Product[] => {
+  const products = getProducts();
+  return products.filter(product => {
+    const currentQty = parseInt(product.quantity) || 0;
+    const minStock = parseInt(product.minimumStock) || 0;
+    return currentQty < minStock && minStock > 0;
+  });
+};
+
+export const updateShoppingList = (): void => {
+  const lowStockProducts = getLowStockProducts();
+  localStorage.setItem(SHOPPING_LIST_KEY, JSON.stringify(lowStockProducts));
 };

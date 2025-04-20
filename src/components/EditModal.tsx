@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Product, saveProduct, deleteProduct } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
@@ -13,9 +12,20 @@ interface EditModalProps {
 }
 
 const EditModal = ({ product, isOpen, onClose, onSave, onDelete }: EditModalProps) => {
-  const [quantity, setQuantity] = useState(product?.quantity || "");
-  const [location, setLocation] = useState(product?.location || "");
-  const [expiryDate, setExpiryDate] = useState(product?.expiryDate || "");
+  const [quantity, setQuantity] = useState("");
+  const [location, setLocation] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [minimumStock, setMinimumStock] = useState("");
+
+  // Atualiza os campos quando o produto muda ou o modal é aberto
+  useEffect(() => {
+    if (product && isOpen) {
+      setQuantity(product.quantity || "");
+      setLocation(product.location || "");
+      setExpiryDate(product.expiryDate || "");
+      setMinimumStock(product.minimumStock || "");
+    }
+  }, [product, isOpen]);
 
   if (!product) return null;
 
@@ -26,6 +36,7 @@ const EditModal = ({ product, isOpen, onClose, onSave, onDelete }: EditModalProp
         quantity,
         location,
         expiryDate,
+        minimumStock,
       });
       onSave();
       onClose();
@@ -83,19 +94,52 @@ const EditModal = ({ product, isOpen, onClose, onSave, onDelete }: EditModalProp
               id="expiryDate"
               className="w-full p-2 border border-gray-300 rounded text-black"
               value={expiryDate}
-              onChange={(e) => setExpiryDate(e.target.value)}
-              placeholder="Data de Validade"
+              onChange={(e) => {
+                // Remove caracteres não numéricos da entrada
+                const numbersOnly = e.target.value.replace(/\D/g, '');
+
+                // Aplica a máscara DD/MM/AAAA
+                let formattedDate = '';
+                if (numbersOnly.length > 0) {
+                  formattedDate += numbersOnly.substring(0, 2);
+                }
+                if (numbersOnly.length > 2) {
+                  formattedDate += '/' + numbersOnly.substring(2, 4);
+                }
+                if (numbersOnly.length > 4) {
+                  formattedDate += '/' + numbersOnly.substring(4, 8);
+                }
+
+                setExpiryDate(formattedDate);
+              }}
+              maxLength={10}
+              placeholder="DD/MM/AAAA"
+            />
+          </div>
+          <div>
+            <label htmlFor="minimumStock" className="block text-xl font-bold text-red-500">
+              Limite Mínimo de Estoque:
+            </label>
+            <input
+              id="minimumStock"
+              className="w-full p-2 border border-gray-300 rounded text-black"
+              value={minimumStock}
+              onChange={(e) => {
+                const value = e.target.value.replace(/\D/g, '');
+                setMinimumStock(value);
+              }}
+              placeholder="Limite Mínimo de Estoque"
             />
           </div>
           <div className="flex justify-between pt-4">
-            <Button 
-              className="bg-[#444444] text-white text-xl font-bold" 
+            <Button
+              className="bg-[#444444] text-white text-xl font-bold"
               onClick={handleSave}
             >
               Salvar Alterações
             </Button>
-            <Button 
-              className="bg-[#444444] text-white text-xl font-bold" 
+            <Button
+              className="bg-[#444444] text-white text-xl font-bold"
               onClick={handleDelete}
             >
               Deletar
