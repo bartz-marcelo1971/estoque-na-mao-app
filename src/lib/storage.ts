@@ -1,4 +1,36 @@
-export interface Product {
+import { supabase, Product, ShoppingListItem } from './supabase'
+import { getCurrentUser, isAuthenticated } from './auth'
+import { formatExpiryDate, isValidDate, convertToISODate, convertFromISODate } from './utils'
+
+// Converter tipos entre a aplicação e o Supabase
+const convertToAppProduct = (dbProduct: Product): AppProduct => {
+  return {
+    name: dbProduct.name,
+    quantity: dbProduct.quantity.toString(),
+    location: dbProduct.location,
+    expiryDate: dbProduct.expiry_date ? convertFromISODate(dbProduct.expiry_date) : '',
+    minimumStock: dbProduct.minimum_stock.toString()
+  }
+}
+
+const convertToDbProduct = (appProduct: AppProduct): Omit<Product, 'id' | 'created_at'> => {
+  // Converter a data para formato ISO antes de enviar para o banco
+  const expiryDate = appProduct.expiryDate && appProduct.expiryDate.trim() !== ''
+    ? convertToISODate(appProduct.expiryDate)
+    : null;
+
+  return {
+    name: appProduct.name,
+    quantity: parseInt(appProduct.quantity) || 0,
+    location: appProduct.location,
+    expiry_date: expiryDate,
+    minimum_stock: parseInt(appProduct.minimumStock) || 0,
+    user_id: getCurrentUser()?.id || ''
+  }
+}
+
+// Interface de produto para a aplicação (mantendo compatibilidade)
+export interface AppProduct {
   name: string;
   quantity: string;
   location: string;
@@ -6,54 +38,140 @@ export interface Product {
   minimumStock: string;
 }
 
-const STORAGE_KEY = 'stock-na-mao-products';
-const SHOPPING_LIST_KEY = 'stock-na-mao-shopping-list';
-
-export const saveProduct = (product: Product): void => {
-  const products = getProducts();
-  const existingIndex = products.findIndex(p => p.name === product.name);
-  
-  if (existingIndex >= 0) {
-    products[existingIndex] = product;
-  } else {
-    products.push(product);
+// Salvar produto no Supabase
+export const saveProduct = async (product: AppProduct): Promise<void> => {
+  if (!isAuthenticated()) {
+    throw new Error('Usuário não autenticado')
   }
-  
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
-  
-  updateShoppingList();
-};
 
-export const getProducts = (): Product[] => {
-  const productsStr = localStorage.getItem(STORAGE_KEY);
-  return productsStr ? JSON.parse(productsStr) : [];
-};
+  const dbProduct = convertToDbProduct(product)
 
-export const getProductByName = (name: string): Product | undefined => {
-  const products = getProducts();
-  return products.find(p => p.name.toLowerCase() === name.toLowerCase());
-};
+  // Verificar se o produto já existe
+  const { data: existingProducts } = await supabase
+    .from('products')
+    .select('*')
+    .eq('name', product.name)
+    .eq('user_id', getCurrentUser()?.id || '')
 
-export const deleteProduct = (name: string): boolean => {
-  const products = getProducts();
-  const initialLength = products.length;
-  const filteredProducts = products.filter(p => p.name.toLowerCase() !== name.toLowerCase());
-  
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(filteredProducts));
-  
-  return initialLength > filteredProducts.length;
-};
+  if (existingProducts && existingProducts.length > 0) {
+    // Atualizar produto existente
+    await supabase
+      .from('products')
+      .update(dbProduct)
+      .eq('id', existingProducts[0].id)
+  } else {
+    // Inserir novo produto
+    await supabase
+      .from('products')
+      .insert(dbProduct)
+  }
 
-export const getLowStockProducts = (): Product[] => {
-  const products = getProducts();
-  return products.filter(product => {
-    const currentQty = parseInt(product.quantity) || 0;
-    const minStock = parseInt(product.minimumStock) || 0;
-    return currentQty < minStock && minStock > 0;
-  });
-};
+  // Atualizar lista de compras
+  await updateShoppingList()
+}
 
-export const updateShoppingList = (): void => {
-  const lowStockProducts = getLowStockProducts();
-  localStorage.setItem(SHOPPING_LIST_KEY, JSON.stringify(lowStockProducts));
-};
+// Obter todos os produtos
+export const getProducts = async (): Promise<AppProduct[]> => {
+  if (!isAuthenticated()) {
+    return []
+  }
+
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('user_id', getCurrentUser()?.id || '')
+    .order('name')
+
+  if (error) {
+    console.error('Erro ao buscar produtos:', error)
+    return []
+  }
+
+  return (data || []).map(convertToAppProduct)
+}
+
+// Obter produto pelo nome
+export const getProductByName = async (name: string): Promise<AppProduct | undefined> => {
+  if (!isAuthenticated()) {
+    return undefined
+  }
+
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('name', name)
+    .eq('user_id', getCurrentUser()?.id || '')
+    .single()
+
+  if (error || !data) {
+    return undefined
+  }
+
+  return convertToAppProduct(data)
+}
+
+// Excluir produto
+export const deleteProduct = async (name: string): Promise<boolean> => {
+  if (!isAuthenticated()) {
+    return false
+  }
+
+  const { data: product } = await supabase
+    .from('products')
+    .select('id')
+    .eq('name', name)
+    .eq('user_id', getCurrentUser()?.id || '')
+    .single()
+
+  if (!product) {
+    return false
+  }
+
+  const { error } = await supabase
+    .from('products')
+    .delete()
+    .eq('id', product.id)
+
+  if (error) {
+    console.error('Erro ao excluir produto:', error)
+    return false
+  }
+
+  return true
+}
+
+// Obter produtos com estoque baixo
+export const getLowStockProducts = async (): Promise<AppProduct[]> => {
+  if (!isAuthenticated()) {
+    return []
+  }
+
+  // Obter todos os produtos do usuário
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('user_id', getCurrentUser()?.id || '')
+    .gt('minimum_stock', 0)
+
+  if (error || !data) {
+    console.error('Erro ao buscar produtos com estoque baixo:', error)
+    return []
+  }
+
+  // Filtrar produtos com estoque abaixo do mínimo manualmente
+  const lowStockProducts = data.filter(product =>
+    product.quantity < product.minimum_stock
+  )
+
+  return lowStockProducts.map(convertToAppProduct)
+}
+
+// Atualizar lista de compras
+export const updateShoppingList = async (): Promise<void> => {
+  if (!isAuthenticated()) {
+    return
+  }
+
+  // Com o trigger no banco de dados, a lista de compras será atualizada automaticamente
+  // Esta função existe para compatibilidade com o código anterior
+}

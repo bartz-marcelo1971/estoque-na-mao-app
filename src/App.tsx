@@ -1,13 +1,16 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import Products from "./pages/Products";
 import ShoppingList from "./pages/ShoppingList";
 import NotFound from "./pages/NotFound";
+import Login from "./pages/Login";
+import Layout from "./components/Layout";
+import { initAuth, isAuthenticated } from "./lib/auth";
 
 // Função para limpar o cache do navegador
 const clearBrowserCache = async () => {
@@ -15,12 +18,12 @@ const clearBrowserCache = async () => {
     try {
       // Obtém todas as chaves de cache
       const cacheKeys = await window.caches.keys();
-      
+
       // Exclui cada cache
       await Promise.all(
         cacheKeys.map(cacheKey => window.caches.delete(cacheKey))
       );
-      
+
       console.log('Cache do navegador limpo com sucesso');
     } catch (error) {
       console.error('Erro ao limpar o cache:', error);
@@ -28,13 +31,34 @@ const clearBrowserCache = async () => {
   }
 };
 
+// Componente para rotas protegidas
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  if (!isAuthenticated()) {
+    return <Navigate to="/login" replace />;
+  }
+  return <Layout>{children}</Layout>;
+};
+
 const queryClient = new QueryClient();
 
 const App = () => {
-  // Efeito para limpar o cache quando o aplicativo inicia
+  const [authInitialized, setAuthInitialized] = useState(false);
+
+  // Efeito para inicializar a autenticação e limpar o cache
   useEffect(() => {
-    clearBrowserCache();
+    const initialize = async () => {
+      await initAuth();
+      await clearBrowserCache();
+      setAuthInitialized(true);
+    };
+
+    initialize();
   }, []);
+
+  // Mostrar loading enquanto inicializa a autenticação
+  if (!authInitialized) {
+    return <div className="flex justify-center items-center h-screen">Carregando...</div>;
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -43,9 +67,22 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/produtos" element={<Products />} />
-            <Route path="/lista-compras" element={<ShoppingList />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={
+              <ProtectedRoute>
+                <Index />
+              </ProtectedRoute>
+            } />
+            <Route path="/produtos" element={
+              <ProtectedRoute>
+                <Products />
+              </ProtectedRoute>
+            } />
+            <Route path="/lista-compras" element={
+              <ProtectedRoute>
+                <ShoppingList />
+              </ProtectedRoute>
+            } />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

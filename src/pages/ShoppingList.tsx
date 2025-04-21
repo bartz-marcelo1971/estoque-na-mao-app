@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Product, getLowStockProducts, saveProduct } from "@/lib/storage";
+import { AppProduct, getLowStockProducts } from "@/lib/storage";
 import { useToast } from "@/components/ui/use-toast";
 import EditModal from "@/components/EditModal";
 
 const ShoppingList = () => {
-    const [products, setProducts] = useState<Product[]>([]);
-    const [editProduct, setEditProduct] = useState<Product | null>(null);
+    const [products, setProducts] = useState<AppProduct[]>([]);
+    const [editProduct, setEditProduct] = useState<AppProduct | null>(null);
     const [isEditOpen, setIsEditOpen] = useState(false);
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
     const { toast } = useToast();
 
@@ -16,12 +17,32 @@ const ShoppingList = () => {
         loadProducts();
     }, []);
 
-    const loadProducts = () => {
-        const lowStockProducts = getLowStockProducts();
-        setProducts(lowStockProducts);
+    const loadProducts = async () => {
+        try {
+            setLoading(true);
+            const lowStockProducts = await getLowStockProducts();
+            console.log("Produtos com estoque baixo:", lowStockProducts);
+            setProducts(lowStockProducts);
+
+            if (lowStockProducts.length === 0) {
+                toast({
+                    title: "Informação",
+                    description: "Não há produtos com estoque abaixo do mínimo."
+                });
+            }
+        } catch (error) {
+            console.error("Erro ao carregar lista de compras:", error);
+            toast({
+                title: "Erro",
+                description: "Não foi possível carregar a lista de compras",
+                variant: "destructive"
+            });
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleEdit = (product: Product) => {
+    const handleEdit = (product: AppProduct) => {
         setEditProduct(product);
         setIsEditOpen(true);
     };
@@ -30,11 +51,19 @@ const ShoppingList = () => {
         navigate('/produtos');
     };
 
+    const getNeededQuantity = (product: AppProduct) => {
+        const current = parseInt(product.quantity) || 0;
+        const minimum = parseInt(product.minimumStock) || 0;
+        return Math.max(0, minimum - current);
+    };
+
     return (
         <div className="min-h-screen flex flex-col items-center p-4 bg-[#333333]">
             <h1 className="text-3xl font-bold text-white mb-8 mt-8">Lista de Compras</h1>
 
-            {products.length > 0 ? (
+            {loading ? (
+                <div className="text-white text-xl">Carregando...</div>
+            ) : products.length > 0 ? (
                 <div className="w-full max-w-md space-y-4">
                     {products.map((product, index) => (
                         <div
@@ -47,9 +76,12 @@ const ShoppingList = () => {
                                 <span>Quantidade Atual: {product.quantity}</span>
                                 <span>Mínimo: {product.minimumStock}</span>
                             </div>
+                            <div className="mt-2 text-red-400 font-bold">
+                                Comprar: {getNeededQuantity(product)} unidades
+                            </div>
                             <div className="mt-2 text-sm">
                                 <p>Local: {product.location}</p>
-                                <p>Validade: {product.expiryDate}</p>
+                                {product.expiryDate && <p>Validade: {product.expiryDate}</p>}
                             </div>
                             <button
                                 className="mt-2 w-full py-2 bg-[#555555] rounded text-white"
@@ -80,17 +112,17 @@ const ShoppingList = () => {
                 product={editProduct}
                 isOpen={isEditOpen}
                 onClose={() => setIsEditOpen(false)}
-                onSave={() => {
+                onSave={async () => {
                     setIsEditOpen(false);
-                    loadProducts(); // Recarregar a lista após edição
+                    await loadProducts(); // Recarregar a lista após edição
                     toast({
                         title: "Sucesso",
                         description: "Produto atualizado com sucesso",
                     });
                 }}
-                onDelete={() => {
+                onDelete={async () => {
                     setIsEditOpen(false);
-                    loadProducts(); // Recarregar a lista após exclusão
+                    await loadProducts(); // Recarregar a lista após exclusão
                     toast({
                         title: "Sucesso",
                         description: "Produto removido com sucesso",
@@ -101,5 +133,4 @@ const ShoppingList = () => {
     );
 };
 
-export default ShoppingList; 
- 
+export default ShoppingList;

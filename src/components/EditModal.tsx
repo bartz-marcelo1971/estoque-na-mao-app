@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Product, saveProduct, deleteProduct } from "@/lib/storage";
+import { AppProduct, saveProduct, deleteProduct } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
+import { applyDateMask } from "@/lib/utils";
 
 interface EditModalProps {
-  product: Product | null;
+  product: AppProduct | null;
   isOpen: boolean;
   onClose: () => void;
   onSave: () => void;
@@ -16,23 +17,40 @@ const EditModal = ({ product, isOpen, onClose, onSave, onDelete }: EditModalProp
   const [location, setLocation] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [minimumStock, setMinimumStock] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [productName, setProductName] = useState("");
 
-  // Atualiza os campos quando o produto muda ou o modal é aberto
+  // Apenas armazena o nome do produto para referência
   useEffect(() => {
     if (product && isOpen) {
-      setQuantity(product.quantity || "");
-      setLocation(product.location || "");
-      setExpiryDate(product.expiryDate || "");
-      setMinimumStock(product.minimumStock || "");
+      // Limpar os campos a cada abertura do modal
+      setQuantity("");
+      setLocation("");
+      setExpiryDate("");
+      setMinimumStock("");
+
+      // Salvar apenas o nome do produto para saber qual estamos editando
+      setProductName(product.name);
     }
   }, [product, isOpen]);
 
+  // Limpar campos quando o modal é fechado
+  useEffect(() => {
+    if (!isOpen) {
+      setQuantity("");
+      setLocation("");
+      setExpiryDate("");
+      setMinimumStock("");
+    }
+  }, [isOpen]);
+
   if (!product) return null;
 
-  const handleSave = () => {
-    if (product) {
-      saveProduct({
-        name: product.name,
+  const handleSave = async () => {
+    try {
+      setLoading(true);
+      await saveProduct({
+        name: productName,
         quantity,
         location,
         expiryDate,
@@ -40,14 +58,23 @@ const EditModal = ({ product, isOpen, onClose, onSave, onDelete }: EditModalProp
       });
       onSave();
       onClose();
+    } catch (error) {
+      console.error("Erro ao salvar produto:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDelete = () => {
-    if (product) {
-      deleteProduct(product.name);
+  const handleDelete = async () => {
+    try {
+      setLoading(true);
+      await deleteProduct(productName);
       onDelete();
       onClose();
+    } catch (error) {
+      console.error("Erro ao excluir produto:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -60,7 +87,7 @@ const EditModal = ({ product, isOpen, onClose, onSave, onDelete }: EditModalProp
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-medium">Produto:</h3>
-            <p className="text-3xl font-bold">{product.name}</p>
+            <p className="text-3xl font-bold">{productName}</p>
           </div>
           <div>
             <label htmlFor="quantity" className="block text-xl font-bold text-red-500">
@@ -72,6 +99,8 @@ const EditModal = ({ product, isOpen, onClose, onSave, onDelete }: EditModalProp
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
               placeholder="Quantidade"
+              disabled={loading}
+              autoComplete="off"
             />
           </div>
           <div>
@@ -84,6 +113,8 @@ const EditModal = ({ product, isOpen, onClose, onSave, onDelete }: EditModalProp
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder="Local de Armazenamento"
+              disabled={loading}
+              autoComplete="off"
             />
           </div>
           <div>
@@ -95,25 +126,13 @@ const EditModal = ({ product, isOpen, onClose, onSave, onDelete }: EditModalProp
               className="w-full p-2 border border-gray-300 rounded text-black"
               value={expiryDate}
               onChange={(e) => {
-                // Remove caracteres não numéricos da entrada
-                const numbersOnly = e.target.value.replace(/\D/g, '');
-
-                // Aplica a máscara DD/MM/AAAA
-                let formattedDate = '';
-                if (numbersOnly.length > 0) {
-                  formattedDate += numbersOnly.substring(0, 2);
-                }
-                if (numbersOnly.length > 2) {
-                  formattedDate += '/' + numbersOnly.substring(2, 4);
-                }
-                if (numbersOnly.length > 4) {
-                  formattedDate += '/' + numbersOnly.substring(4, 8);
-                }
-
-                setExpiryDate(formattedDate);
+                // Usar a função de máscara de data centralizada
+                setExpiryDate(applyDateMask(e.target.value));
               }}
               maxLength={10}
-              placeholder="DD/MM/AAAA"
+              placeholder="Data de Validade"
+              disabled={loading}
+              autoComplete="off"
             />
           </div>
           <div>
@@ -129,20 +148,24 @@ const EditModal = ({ product, isOpen, onClose, onSave, onDelete }: EditModalProp
                 setMinimumStock(value);
               }}
               placeholder="Limite Mínimo de Estoque"
+              disabled={loading}
+              autoComplete="off"
             />
           </div>
           <div className="flex justify-between pt-4">
             <Button
               className="bg-[#444444] text-white text-xl font-bold"
               onClick={handleSave}
+              disabled={loading}
             >
-              Salvar Alterações
+              {loading ? "Salvando..." : "Salvar Alterações"}
             </Button>
             <Button
               className="bg-[#444444] text-white text-xl font-bold"
               onClick={handleDelete}
+              disabled={loading}
             >
-              Deletar
+              {loading ? "Excluindo..." : "Deletar"}
             </Button>
           </div>
         </div>

@@ -1,9 +1,10 @@
 import { useState, useEffect, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
-import { Product, saveProduct, getProductByName, deleteProduct } from "@/lib/storage";
+import { AppProduct, saveProduct, getProductByName, deleteProduct, getProducts } from "@/lib/storage";
 import SearchModal from "@/components/SearchModal";
 import EditModal from "@/components/EditModal";
+import { applyDateMask } from "@/lib/utils";
 
 const Products = () => {
   const [productName, setProductName] = useState("");
@@ -12,15 +13,40 @@ const Products = () => {
   const [expiryDate, setExpiryDate] = useState("");
   const [minimumStock, setMinimumStock] = useState("");
 
-  const [searchProduct, setSearchProduct] = useState<Product | null>(null);
-  const [editProduct, setEditProduct] = useState<Product | null>(null);
+  const [searchProduct, setSearchProduct] = useState<AppProduct | null>(null);
+  const [editProduct, setEditProduct] = useState<AppProduct | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [showSaveMessage, setShowSaveMessage] = useState(false);
   const [showDeleteMessage, setShowDeleteMessage] = useState(false);
+  const [products, setProducts] = useState<AppProduct[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Carregar produtos
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        setLoading(true);
+        const loadedProducts = await getProducts();
+        setProducts(loadedProducts);
+        console.log("Produtos carregados:", loadedProducts.length);
+      } catch (error) {
+        console.error("Erro ao carregar produtos:", error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar os produtos",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProducts();
+  }, [toast]);
 
   useEffect(() => {
     let timer: number;
@@ -38,7 +64,7 @@ const Products = () => {
     return () => clearTimeout(timer);
   }, [showDeleteMessage]);
 
-  const handleSave = (e: FormEvent) => {
+  const handleSave = async (e: FormEvent) => {
     e.preventDefault();
     if (!productName.trim()) {
       toast({
@@ -48,20 +74,41 @@ const Products = () => {
       return;
     }
 
-    const product: Product = {
-      name: productName,
-      quantity,
-      location,
-      expiryDate,
-      minimumStock,
-    };
+    try {
+      setLoading(true);
+      const product: AppProduct = {
+        name: productName,
+        quantity,
+        location,
+        expiryDate,
+        minimumStock,
+      };
 
-    saveProduct(product);
-    setShowSaveMessage(true);
-    clearForm();
+      await saveProduct(product);
+      setShowSaveMessage(true);
+      clearForm();
+
+      // Recarregar produtos depois de salvar
+      const updatedProducts = await getProducts();
+      setProducts(updatedProducts);
+
+      toast({
+        title: "Sucesso",
+        description: "Produto salvo com sucesso",
+      });
+    } catch (error: any) {
+      console.error("Erro ao salvar produto:", error);
+      toast({
+        title: "Erro ao salvar",
+        description: error.message || "Não foi possível salvar o produto",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     if (!productName.trim()) {
       toast({
         title: "Erro",
@@ -70,19 +117,39 @@ const Products = () => {
       return;
     }
 
-    const product = getProductByName(productName);
-    if (product) {
-      setSearchProduct(product);
-      setIsSearchOpen(true);
-    } else {
+    try {
+      setLoading(true);
+      const product = await getProductByName(productName);
+      if (product) {
+        setSearchProduct(product);
+        setIsSearchOpen(true);
+
+        // Não preencher o formulário com o produto encontrado
+        // Mantém apenas o nome do produto para referência
+
+        toast({
+          title: "Produto encontrado",
+          description: `Produto: ${product.name}`,
+        });
+      } else {
+        toast({
+          title: "Produto não encontrado",
+          description: "Nenhum produto com esse nome foi encontrado",
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao pesquisar produto:", error);
       toast({
-        title: "Produto não encontrado",
-        description: "Nenhum produto com esse nome foi encontrado",
+        title: "Erro",
+        description: "Ocorreu um erro ao pesquisar o produto",
+        variant: "destructive"
       });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleEdit = () => {
+  const handleEdit = async () => {
     if (!productName.trim()) {
       toast({
         title: "Erro",
@@ -91,19 +158,31 @@ const Products = () => {
       return;
     }
 
-    const product = getProductByName(productName);
-    if (product) {
-      setEditProduct(product);
-      setIsEditOpen(true);
-    } else {
+    try {
+      setLoading(true);
+      const product = await getProductByName(productName);
+      if (product) {
+        setEditProduct(product);
+        setIsEditOpen(true);
+      } else {
+        toast({
+          title: "Produto não encontrado",
+          description: "Nenhum produto com esse nome foi encontrado",
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao editar produto:", error);
       toast({
-        title: "Produto não encontrado",
-        description: "Nenhum produto com esse nome foi encontrado",
+        title: "Erro",
+        description: "Ocorreu um erro ao buscar o produto para edição",
+        variant: "destructive"
       });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!productName.trim()) {
       toast({
         title: "Erro",
@@ -112,16 +191,44 @@ const Products = () => {
       return;
     }
 
-    const product = getProductByName(productName);
-    if (product) {
-      deleteProduct(productName);
-      setShowDeleteMessage(true);
-      clearForm();
-    } else {
+    try {
+      setLoading(true);
+      const product = await getProductByName(productName);
+      if (product) {
+        const result = await deleteProduct(productName);
+        if (result) {
+          setShowDeleteMessage(true);
+          clearForm();
+          // Recarregar produtos depois de deletar
+          const updatedProducts = await getProducts();
+          setProducts(updatedProducts);
+
+          toast({
+            title: "Sucesso",
+            description: "Produto excluído com sucesso",
+          });
+        } else {
+          toast({
+            title: "Erro",
+            description: "Não foi possível excluir o produto",
+            variant: "destructive"
+          });
+        }
+      } else {
+        toast({
+          title: "Produto não encontrado",
+          description: "Nenhum produto com esse nome foi encontrado",
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao excluir produto:", error);
       toast({
-        title: "Produto não encontrado",
-        description: "Nenhum produto com esse nome foi encontrado",
+        title: "Erro",
+        description: "Ocorreu um erro ao excluir o produto",
+        variant: "destructive"
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -141,6 +248,10 @@ const Products = () => {
     <div className="min-h-screen flex flex-col items-center p-4 bg-[#333333]">
       <h1 className="text-3xl font-bold text-white mb-8 mt-8">Seu Estoque</h1>
 
+      {loading && (
+        <div className="mb-4 text-primary">Carregando...</div>
+      )}
+
       <div className="w-full max-w-md space-y-4">
         <form onSubmit={handleSave} className="space-y-4">
           <div>
@@ -150,6 +261,7 @@ const Products = () => {
               placeholder="Produto"
               value={productName}
               onChange={(e) => setProductName(e.target.value)}
+              disabled={loading}
             />
           </div>
           <div>
@@ -159,6 +271,7 @@ const Products = () => {
               placeholder="Quantidade"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
+              disabled={loading}
             />
           </div>
           <div>
@@ -168,6 +281,7 @@ const Products = () => {
               placeholder="Local de Armazenamento"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
+              disabled={loading}
             />
           </div>
           <div>
@@ -177,24 +291,11 @@ const Products = () => {
               placeholder="Data de Validade"
               value={expiryDate}
               onChange={(e) => {
-                // Remove caracteres não numéricos da entrada
-                const numbersOnly = e.target.value.replace(/\D/g, '');
-
-                // Aplica a máscara DD/MM/AAAA
-                let formattedDate = '';
-                if (numbersOnly.length > 0) {
-                  formattedDate += numbersOnly.substring(0, 2);
-                }
-                if (numbersOnly.length > 2) {
-                  formattedDate += '/' + numbersOnly.substring(2, 4);
-                }
-                if (numbersOnly.length > 4) {
-                  formattedDate += '/' + numbersOnly.substring(4, 8);
-                }
-
-                setExpiryDate(formattedDate);
+                // Usar a função de máscara de data centralizada
+                setExpiryDate(applyDateMask(e.target.value));
               }}
               maxLength={10}
+              disabled={loading}
             />
           </div>
           <div>
@@ -208,6 +309,7 @@ const Products = () => {
                 const value = e.target.value.replace(/\D/g, '');
                 setMinimumStock(value);
               }}
+              disabled={loading}
             />
           </div>
 
@@ -215,29 +317,33 @@ const Products = () => {
             <button
               type="submit"
               className="w-full py-3 bg-[#444444] text-white text-xl font-bold rounded"
+              disabled={loading}
             >
-              Salvar
+              {loading ? "Salvando..." : "Salvar"}
             </button>
             <button
               type="button"
               onClick={handleSearch}
               className="w-full py-3 bg-[#444444] text-white text-xl font-bold rounded"
+              disabled={loading}
             >
-              Pesquisar
+              {loading ? "Pesquisando..." : "Pesquisar"}
             </button>
             <button
               type="button"
               onClick={handleEdit}
               className="w-full py-3 bg-[#444444] text-white text-xl font-bold rounded"
+              disabled={loading}
             >
-              Editar
+              {loading ? "Carregando..." : "Editar"}
             </button>
             <button
               type="button"
               onClick={handleDelete}
               className="w-full py-3 bg-[#444444] text-white text-xl font-bold rounded"
+              disabled={loading}
             >
-              Deletar
+              {loading ? "Excluindo..." : "Deletar"}
             </button>
             <button
               type="button"
@@ -268,7 +374,7 @@ const Products = () => {
       {showDeleteMessage && (
         <div className="fixed top-10 inset-x-0 flex justify-center">
           <div className="bg-[#444444] px-6 py-3 rounded-md shadow-lg">
-            <p className="text-xl font-bold text-white">Produto removido!</p>
+            <p className="text-xl font-bold text-white">Produto excluído com sucesso!</p>
           </div>
         </div>
       )}
@@ -286,10 +392,30 @@ const Products = () => {
         onSave={() => {
           setShowSaveMessage(true);
           clearForm();
+          // Recarregar produtos após salvar
+          const loadAgain = async () => {
+            try {
+              const updatedProducts = await getProducts();
+              setProducts(updatedProducts);
+            } catch (error) {
+              console.error("Erro ao recarregar produtos:", error);
+            }
+          };
+          loadAgain();
         }}
         onDelete={() => {
           setShowDeleteMessage(true);
           clearForm();
+          // Recarregar produtos após deletar
+          const loadAgain = async () => {
+            try {
+              const updatedProducts = await getProducts();
+              setProducts(updatedProducts);
+            } catch (error) {
+              console.error("Erro ao recarregar produtos:", error);
+            }
+          };
+          loadAgain();
         }}
       />
     </div>
