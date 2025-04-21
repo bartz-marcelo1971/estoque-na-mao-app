@@ -1,4 +1,5 @@
 import Navigation from './Navigation';
+import PWAInstallPrompt from './PWAInstallPrompt';
 
 interface LayoutProps {
     children: React.ReactNode;
@@ -11,6 +12,7 @@ const Layout = ({ children }: LayoutProps) => {
             <main className="flex-grow">
                 {children}
             </main>
+            <PWAInstallPrompt />
         </div>
     );
 };
