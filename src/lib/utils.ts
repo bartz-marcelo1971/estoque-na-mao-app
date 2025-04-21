@@ -45,28 +45,47 @@ export function formatExpiryDate(dateString?: string): string {
  * @returns String formatada com a máscara aplicada
  */
 export function applyDateMask(value: string): string {
-  // Remove caracteres não numéricos
-  const numbersOnly = value.replace(/\D/g, '');
+  // Remove caracteres não numéricos exceto barras
+  let cleanValue = value.replace(/[^\d\/]/g, '');
 
+  // Se o usuário já incluiu barras, vamos apenas limitar o comprimento
+  if (cleanValue.includes('/')) {
+    // Garantir que não tenha mais de 2 barras
+    const parts = cleanValue.split('/');
+    if (parts.length > 3) {
+      cleanValue = parts.slice(0, 3).join('/');
+    }
+
+    // Limitar cada parte ao tamanho adequado (DD/MM/AAAA)
+    const [day = '', month = '', year = ''] = parts;
+    const formattedDay = day.slice(0, 2);
+    const formattedMonth = month.slice(0, 2);
+    const formattedYear = year.slice(0, 4);
+
+    const formatted = [];
+    if (formattedDay) formatted.push(formattedDay);
+    if (formattedMonth || formatted.length > 0) formatted.push(formattedMonth);
+    if (formattedYear || formatted.length > 1) formatted.push(formattedYear);
+
+    return formatted.join('/');
+  }
+
+  // Se não tem barras, aplicamos a máscara automaticamente
+  const numbersOnly = cleanValue.replace(/\D/g, '');
   let formattedDate = '';
 
   if (numbersOnly.length > 0) {
-    // Limita o dia entre 01-31
-    const day = parseInt(numbersOnly.substring(0, 2));
-    if (numbersOnly.length >= 2) {
-      formattedDate += (day > 31 ? '31' : day < 1 ? '01' : numbersOnly.substring(0, 2));
-    } else {
-      formattedDate += numbersOnly.substring(0, 2);
-    }
+    // Primeira parte: dia (limita a 2 dígitos)
+    formattedDate += numbersOnly.substring(0, 2);
   }
 
   if (numbersOnly.length > 2) {
-    // Limita o mês entre 01-12
-    const month = parseInt(numbersOnly.substring(2, 4));
-    formattedDate += '/' + (month > 12 ? '12' : month < 1 ? '01' : numbersOnly.substring(2, 4));
+    // Segunda parte: mês (adiciona barra e limita a 2 dígitos)
+    formattedDate += '/' + numbersOnly.substring(2, 4);
   }
 
   if (numbersOnly.length > 4) {
+    // Terceira parte: ano (adiciona barra e limita a 4 dígitos)
     formattedDate += '/' + numbersOnly.substring(4, 8);
   }
 
@@ -94,10 +113,20 @@ export function isValidDate(dateString: string): boolean {
   // Verifica limites básicos
   if (month < 1 || month > 12) return false;
   if (day < 1) return false;
+  if (year < 1900 || year > 2100) return false; // Intervalo razoável de anos
 
   // Verifica o número de dias para o mês
   const daysInMonth = new Date(year, month, 0).getDate();
   if (day > daysInMonth) return false;
+
+  // Verifica se não é uma data futura muito distante
+  const currentDate = new Date();
+  const inputDate = new Date(year, month - 1, day); // JS usa mês base 0
+  const maxFutureDate = new Date();
+  maxFutureDate.setFullYear(currentDate.getFullYear() + 10); // Máximo 10 anos no futuro
+
+  // Se for uma data futura muito distante, provavelmente é erro
+  if (inputDate > maxFutureDate) return false;
 
   return true;
 }
@@ -113,9 +142,13 @@ export function convertToISODate(dateString: string): string | null {
   const parts = dateString.split('/');
   if (parts.length !== 3) return null;
 
-  const day = parts[0];
-  const month = parts[1];
+  // Garantir que os valores tenham dois dígitos
+  let day = parts[0];
+  let month = parts[1];
   const year = parts[2];
+
+  if (day.length === 1) day = '0' + day;
+  if (month.length === 1) month = '0' + month;
 
   return `${year}-${month}-${day}`;
 }
@@ -128,15 +161,23 @@ export function convertToISODate(dateString: string): string | null {
 export function convertFromISODate(isoDateString: string | null): string {
   if (!isoDateString) return '';
 
-  // Verifica se está no formato ISO
-  const regex = /^(\d{4})-(\d{2})-(\d{2})$/;
-  const match = isoDateString.match(regex);
+  try {
+    // Verifica se está no formato ISO
+    const regex = /^(\d{4})-(\d{2})-(\d{2})$/;
+    const match = isoDateString.match(regex);
 
-  if (!match) return isoDateString; // Retorna original se não estiver no formato ISO
+    if (!match) return isoDateString; // Retorna original se não estiver no formato ISO
 
-  const year = match[1];
-  const month = match[2];
-  const day = match[3];
+    const year = match[1];
+    const month = match[2];
+    const day = match[3];
 
-  return `${day}/${month}/${year}`;
+    // Verificar se a data é válida
+    const date = new Date(`${year}-${month}-${day}`);
+    if (isNaN(date.getTime())) return ''; // Data inválida
+
+    return `${day}/${month}/${year}`;
+  } catch (e) {
+    return ''; // Em caso de erro, retorna string vazia
+  }
 }

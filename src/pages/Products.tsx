@@ -2,6 +2,7 @@ import { useState, useEffect, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { AppProduct, saveProduct, getProductByName, deleteProduct, getProducts } from "@/lib/storage";
+import { signOut } from "@/lib/auth";
 import SearchModal from "@/components/SearchModal";
 import EditModal from "@/components/EditModal";
 import { applyDateMask } from "@/lib/utils";
@@ -232,8 +233,27 @@ const Products = () => {
     }
   };
 
-  const handleExit = () => {
-    navigate('/');
+  const handleExit = async () => {
+    try {
+      setLoading(true);
+      // Fazer logout do usuário
+      await signOut();
+      // Redirecionar para a tela de login
+      navigate('/login');
+      toast({
+        title: "Desconectado",
+        description: "Você saiu do sistema com sucesso.",
+      });
+    } catch (error) {
+      console.error("Erro ao fazer logout:", error);
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro ao sair do sistema",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const clearForm = () => {
@@ -349,8 +369,9 @@ const Products = () => {
               type="button"
               onClick={handleExit}
               className="w-full py-3 bg-[#444444] text-white text-xl font-bold rounded"
+              disabled={loading}
             >
-              Sair
+              {loading ? "Saindo..." : "Sair"}
             </button>
             <button
               type="button"

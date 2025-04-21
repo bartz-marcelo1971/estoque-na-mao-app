@@ -130,7 +130,7 @@ const EditModal = ({ product, isOpen, onClose, onSave, onDelete }: EditModalProp
                 setExpiryDate(applyDateMask(e.target.value));
               }}
               maxLength={10}
-              placeholder="Data de Validade"
+              placeholder="Data de Validade (ex: 31/12/2024)"
               disabled={loading}
               autoComplete="off"
             />
