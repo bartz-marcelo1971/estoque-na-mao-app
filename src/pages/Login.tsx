@@ -175,6 +175,7 @@ const Login = () => {
                                                 id="email"
                                                 type="email"
                                                 placeholder="seu@email.com"
+                                                className="bg-white"
                                                 value={email}
                                                 onChange={(e) => setEmail(e.target.value)}
                                                 required
@@ -185,6 +186,8 @@ const Login = () => {
                                             <Input
                                                 id="password"
                                                 type="password"
+                                                placeholder="Digite sua senha"
+                                                className="bg-white"
                                                 value={password}
                                                 onChange={(e) => setPassword(e.target.value)}
                                                 required
@@ -203,6 +206,7 @@ const Login = () => {
                                                 id="register-email"
                                                 type="email"
                                                 placeholder="seu@email.com"
+                                                className="bg-white"
                                                 value={email}
                                                 onChange={(e) => setEmail(e.target.value)}
                                                 required
@@ -213,6 +217,8 @@ const Login = () => {
                                             <Input
                                                 id="register-password"
                                                 type="password"
+                                                placeholder="Digite sua senha"
+                                                className="bg-white"
                                                 value={password}
                                                 onChange={(e) => setPassword(e.target.value)}
                                                 required
@@ -227,17 +233,6 @@ const Login = () => {
                                     </form>
                                 </TabsContent>
                             </Tabs>
-
-                            <Alert className="mt-4">
-                                <InfoIcon className="h-4 w-4" />
-                                <AlertTitle>Nota importante</AlertTitle>
-                                <AlertDescription className="text-xs">
-                                    Se você acabou de configurar o Supabase, verifique:<br />
-                                    1. A confirmação de email está desativada?<br />
-                                    2. O URL do site está configurado como http://localhost:5173?<br />
-                                    3. As credenciais no arquivo .env estão corretas?
-                                </AlertDescription>
-                            </Alert>
                         </CardContent>
                     </>
                 )}
