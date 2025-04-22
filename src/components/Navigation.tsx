@@ -17,10 +17,19 @@ const Navigation = () => {
 
     const handleLogout = async () => {
         try {
+            // Fazer logout do usuário
             await signOut();
-            navigate("/login");
+
+            // Limpar o localStorage para garantir que todas as informações de sessão sejam removidas
+            localStorage.clear();
+
+            // Forçar redirecionamento usando window.location para a tela de login
+            window.location.href = `${window.location.origin}/login`;
         } catch (error) {
             console.error("Erro ao fazer logout:", error);
+
+            // Mesmo em caso de erro, forçar redirecionamento para a tela de login
+            window.location.href = `${window.location.origin}/login`;
         }
     };
 
