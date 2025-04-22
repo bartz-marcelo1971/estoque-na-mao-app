@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { signOut, getCurrentUser, isAuthenticated } from "@/lib/auth";
+import { signOut, getCurrentUser } from "@/lib/auth";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -9,73 +9,18 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
-import { Package, User, LogOut } from "lucide-react";
-import { useState } from "react";
-import { useToast } from "@/components/ui/use-toast";
+import { Home, Package, ShoppingCart, LogOut, User } from "lucide-react";
 
 const Navigation = () => {
     const navigate = useNavigate();
     const user = getCurrentUser();
-    const [isLoggingOut, setIsLoggingOut] = useState(false);
-    const { toast } = useToast();
 
     const handleLogout = async () => {
-        if (isLoggingOut) return; // Prevenir múltiplos cliques
-
         try {
-            setIsLoggingOut(true);
-
-            // Mostrar toast de logout
-            toast({
-                title: "Saindo...",
-                description: "Desconectando da sua conta"
-            });
-
-            // Notificar o service worker sobre o logout para limpar caches
-            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                navigator.serviceWorker.controller.postMessage({
-                    type: 'LOGOUT'
-                });
-            }
-
-            // Fazer logout do usuário
             await signOut();
-
-            // Limpar o localStorage para garantir que todas as informações de sessão sejam removidas
-            localStorage.clear();
-
-            // Limpar cookies de sessão
-            document.cookie.split(";").forEach(function (c) {
-                document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-            });
-
-            // Curto atraso para garantir que todas as operações assíncronas terminem
-            setTimeout(() => {
-                // Verificar se o usuário ainda está autenticado
-                if (!isAuthenticated()) {
-                    // Forçar redirecionamento usando window.location para a tela de login
-                    window.location.replace(`${window.location.origin}/login`);
-                } else {
-                    // Tentar novamente se ainda estiver autenticado
-                    console.error("Ainda autenticado após logout, tentando novamente");
-                    // Forçar uma atualização completa
-                    window.location.href = `${window.location.origin}/login?t=${Date.now()}`;
-                }
-            }, 300);
+            navigate("/login");
         } catch (error) {
             console.error("Erro ao fazer logout:", error);
-            toast({
-                title: "Erro",
-                description: "Ocorreu um erro ao sair, recarregando a página",
-                variant: "destructive"
-            });
-
-            // Mesmo em caso de erro, forçar redirecionamento para a tela de login
-            setTimeout(() => {
-                window.location.replace(`${window.location.origin}/login?error=true`);
-            }, 1000);
-        } finally {
-            setIsLoggingOut(false);
         }
     };
 
@@ -90,6 +35,21 @@ const Navigation = () => {
                 </div>
 
                 <div className="flex items-center space-x-4">
+                    <Link to="/" className="flex items-center space-x-1 text-sm font-medium">
+                        <Home className="h-4 w-4" />
+                        <span>Início</span>
+                    </Link>
+
+                    <Link to="/produtos" className="flex items-center space-x-1 text-sm font-medium">
+                        <Package className="h-4 w-4" />
+                        <span>Produtos</span>
+                    </Link>
+
+                    <Link to="/lista-compras" className="flex items-center space-x-1 text-sm font-medium">
+                        <ShoppingCart className="h-4 w-4" />
+                        <span>Lista de Compras</span>
+                    </Link>
+
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon">
@@ -102,13 +62,9 @@ const Navigation = () => {
                                 {user?.email}
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                                onClick={handleLogout}
-                                className="text-red-500"
-                                disabled={isLoggingOut}
-                            >
+                            <DropdownMenuItem onClick={handleLogout} className="text-red-500">
                                 <LogOut className="mr-2 h-4 w-4" />
-                                <span>{isLoggingOut ? "Saindo..." : "Sair"}</span>
+                                <span>Sair</span>
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>

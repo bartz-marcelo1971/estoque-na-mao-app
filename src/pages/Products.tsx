@@ -370,6 +370,14 @@ const Products = () => {
             </button>
             <button
               type="button"
+              onClick={handleExit}
+              className="w-full py-3 bg-[#444444] text-white text-xl font-bold rounded"
+              disabled={loading}
+            >
+              {loading ? "Saindo..." : "Sair"}
+            </button>
+            <button
+              type="button"
               onClick={() => navigate('/lista-compras')}
               className="w-full py-3 bg-[#444444] text-white text-xl font-bold rounded"
             >
