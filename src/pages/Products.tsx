@@ -2,7 +2,7 @@ import { useState, useEffect, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { AppProduct, saveProduct, getProductByName, deleteProduct, getProducts } from "@/lib/storage";
-import { signOut } from "@/lib/auth";
+import { signOut, isAuthenticated } from "@/lib/auth";
 import SearchModal from "@/components/SearchModal";
 import EditModal from "@/components/EditModal";
 import { applyDateMask } from "@/lib/utils";
@@ -25,6 +25,14 @@ const Products = () => {
 
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Verificar autenticação
+  useEffect(() => {
+    // Redirecionar para login se não estiver autenticado
+    if (!isAuthenticated()) {
+      window.location.href = '/login';
+    }
+  }, []);
 
   // Carregar produtos
   useEffect(() => {
@@ -238,19 +246,14 @@ const Products = () => {
       setLoading(true);
       // Fazer logout do usuário
       await signOut();
-      // Redirecionar para a tela de login
-      navigate('/login');
-      toast({
-        title: "Desconectado",
-        description: "Você saiu do sistema com sucesso.",
-      });
+      // Limpar o estado do usuário
+      localStorage.removeItem('supabase.auth.token');
+      // Redirecionar para a tela de login com força
+      window.location.href = '/login';
     } catch (error) {
       console.error("Erro ao fazer logout:", error);
-      toast({
-        title: "Erro",
-        description: "Ocorreu um erro ao sair do sistema",
-        variant: "destructive"
-      });
+      // Forçar a navegação mesmo em caso de erro
+      window.location.href = '/login';
     } finally {
       setLoading(false);
     }
