@@ -3,13 +3,14 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Index from "./pages/Index";
 import Products from "./pages/Products";
 import ShoppingList from "./pages/ShoppingList";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Layout from "./components/Layout";
+import IndexLayout from "./components/IndexLayout";
 import { initAuth, isAuthenticated } from "./lib/auth";
 
 // Função para limpar o cache do navegador
@@ -33,9 +34,17 @@ const clearBrowserCache = async () => {
 
 // Componente para rotas protegidas
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const location = useLocation();
+
   if (!isAuthenticated()) {
     return <Navigate to="/login" replace />;
   }
+
+  // Usar um layout diferente para a página inicial
+  if (location.pathname === '/') {
+    return <IndexLayout>{children}</IndexLayout>;
+  }
+
   return <Layout>{children}</Layout>;
 };
 

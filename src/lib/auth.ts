@@ -153,9 +153,33 @@ export const signIn = async (email: string, password: string) => {
 
 // Logout
 export const signOut = async () => {
-    const { error } = await supabase.auth.signOut()
-    if (error) throw error
-    currentUser = null
+    try {
+        // Tentar fazer logout no Supabase
+        const { error } = await supabase.auth.signOut();
+
+        if (error) {
+            console.error("Erro ao fazer logout:", error);
+            throw error;
+        }
+
+        // Limpar o estado do usuário no cliente
+        currentUser = null;
+
+        // Remover token de acesso específico
+        localStorage.removeItem('sb-access-token');
+        sessionStorage.removeItem('sb-access-token');
+
+        // Remover token de refresh específico
+        localStorage.removeItem('sb-refresh-token');
+        sessionStorage.removeItem('sb-refresh-token');
+
+        return true;
+    } catch (e) {
+        console.error("Falha ao fazer logout:", e);
+        // Mesmo com erro, limpar o estado atual
+        currentUser = null;
+        throw e;
+    }
 }
 
 // Obter usuário atual
