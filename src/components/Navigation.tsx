@@ -9,7 +9,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
-import { Home, Package, ShoppingCart, LogOut, User } from "lucide-react";
+import { Package, User, LogOut } from "lucide-react";
 
 const Navigation = () => {
     const navigate = useNavigate();
@@ -35,21 +35,6 @@ const Navigation = () => {
                 </div>
 
                 <div className="flex items-center space-x-4">
-                    <Link to="/" className="flex items-center space-x-1 text-sm font-medium">
-                        <Home className="h-4 w-4" />
-                        <span>Início</span>
-                    </Link>
-
-                    <Link to="/produtos" className="flex items-center space-x-1 text-sm font-medium">
-                        <Package className="h-4 w-4" />
-                        <span>Produtos</span>
-                    </Link>
-
-                    <Link to="/lista-compras" className="flex items-center space-x-1 text-sm font-medium">
-                        <ShoppingCart className="h-4 w-4" />
-                        <span>Lista de Compras</span>
-                    </Link>
-
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon">

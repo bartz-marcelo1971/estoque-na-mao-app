@@ -30,7 +30,7 @@ const Products = () => {
   useEffect(() => {
     // Redirecionar para login se não estiver autenticado
     if (!isAuthenticated()) {
-      window.location.href = '/login';
+      window.location.href = `${window.location.origin}/login`;
     }
   }, []);
 
@@ -247,13 +247,13 @@ const Products = () => {
       // Fazer logout do usuário
       await signOut();
       // Limpar o estado do usuário
-      localStorage.removeItem('supabase.auth.token');
-      // Redirecionar para a tela de login com força
-      window.location.href = '/login';
+      localStorage.clear(); // Limpar todo o localStorage para garantir
+      // Usar o navigate com replace para garantir que não haja histórico
+      navigate('/login', { replace: true });
     } catch (error) {
       console.error("Erro ao fazer logout:", error);
-      // Forçar a navegação mesmo em caso de erro
-      window.location.href = '/login';
+      // Mesmo em caso de erro, tentar navegar para a tela de login
+      navigate('/login', { replace: true });
     } finally {
       setLoading(false);
     }
@@ -367,14 +367,6 @@ const Products = () => {
               disabled={loading}
             >
               {loading ? "Excluindo..." : "Deletar"}
-            </button>
-            <button
-              type="button"
-              onClick={handleExit}
-              className="w-full py-3 bg-[#444444] text-white text-xl font-bold rounded"
-              disabled={loading}
-            >
-              {loading ? "Saindo..." : "Sair"}
             </button>
             <button
               type="button"
