@@ -153,9 +153,36 @@ export const signIn = async (email: string, password: string) => {
 
 // Logout
 export const signOut = async () => {
-    const { error } = await supabase.auth.signOut()
-    if (error) throw error
-    currentUser = null
+    try {
+        // Realizar logout no Supabase
+        const { error } = await supabase.auth.signOut({
+            scope: 'global' // Desloga de todas as sessões, não apenas da atual
+        });
+
+        if (error) {
+            console.error('Erro ao fazer logout no Supabase:', error);
+            throw error;
+        }
+
+        // Limpar variáveis de estado
+        currentUser = null;
+
+        // Limpar qualquer armazenamento do Supabase
+        localStorage.removeItem('supabase.auth.token');
+        sessionStorage.removeItem('supabase.auth.token');
+
+        // Tentar remover cookies relacionados ao Supabase
+        document.cookie = 'sb-access-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        document.cookie = 'sb-refresh-token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+
+        console.log('Logout realizado com sucesso');
+        return true;
+    } catch (e) {
+        console.error('Erro durante o logout:', e);
+        // Mesmo com erro, limpar o estado do usuário atual
+        currentUser = null;
+        throw e;
+    }
 }
 
 // Obter usuário atual
