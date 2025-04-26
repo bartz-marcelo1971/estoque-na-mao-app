@@ -255,47 +255,36 @@ const Products = () => {
         localStorage.setItem('pwaPromptDismissed', pwaPromptDismissed);
       }
 
-      // Determinar URL base para navegação
-      const baseUrl = window.location.origin;
-      const loginUrl = `${baseUrl}/login`;
-
-      console.log("Navegando para:", loginUrl);
-
       // Limpar qualquer cache do service worker para a página atual
       if ('caches' in window) {
         try {
           const cachesAvailable = await window.caches.keys();
           for (const cacheName of cachesAvailable) {
             const cache = await window.caches.open(cacheName);
-            // Remover a página atual do cache para garantir que ela não seja servida após o logout
+            // Remover a página atual do cache
             await cache.delete(window.location.href);
+            // Remover também a página de produtos do cache
+            await cache.delete(`${window.location.origin}/produtos`);
           }
         } catch (err) {
           console.error("Erro ao limpar cache:", err);
         }
       }
 
-      // Função para tentar diferentes abordagens de navegação
-      const navigateToLogin = () => {
-        try {
-          // Abordagem 1: Usando replace do location (método mais direto)
-          window.location.replace(loginUrl);
-        } catch (err) {
-          console.error("Erro na navegação para login:", err);
+      // Usar o navigate do React Router para ir para a página de login
+      navigate('/login', { replace: true });
 
-          // Abordagem 2: Se falhar, tenta window.location.href
-          window.location.href = loginUrl;
+      // Se a navegação falhar, tentar recarregar a página
+      setTimeout(() => {
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
         }
-      };
-
-      // Executar a navegação
-      navigateToLogin();
+      }, 100);
 
     } catch (error) {
       console.error("Erro ao fazer logout:", error);
-
-      // Mesmo em caso de erro, tentar a navegação como fallback
-      window.location.href = `${window.location.origin}/login`;
+      // Fallback: redirecionar diretamente
+      window.location.href = '/login';
     } finally {
       setLoading(false);
     }

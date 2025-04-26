@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AppProduct, getLowStockProducts, getProducts } from "@/lib/storage";
 import { useToast } from "@/components/ui/use-toast";
 import EditModal from "@/components/EditModal";
+import { signOut } from "@/lib/auth";
 
 const ShoppingList = () => {
     const [products, setProducts] = useState<AppProduct[]>([]);
@@ -69,6 +70,55 @@ const ShoppingList = () => {
 
     const handleBackToHome = () => {
         navigate('/produtos');
+    };
+
+    const handleExit = async () => {
+        try {
+            setLoading(true);
+
+            // Fazer logout do usuário
+            await signOut();
+
+            // Limpar o estado do usuário (mantendo apenas configurações PWA)
+            const pwaPromptDismissed = localStorage.getItem('pwaPromptDismissed');
+            localStorage.clear();
+            if (pwaPromptDismissed) {
+                localStorage.setItem('pwaPromptDismissed', pwaPromptDismissed);
+            }
+
+            // Limpar qualquer cache do service worker para a página atual
+            if ('caches' in window) {
+                try {
+                    const cachesAvailable = await window.caches.keys();
+                    for (const cacheName of cachesAvailable) {
+                        const cache = await window.caches.open(cacheName);
+                        // Remover a página atual do cache
+                        await cache.delete(window.location.href);
+                        // Remover também a página de lista de compras do cache
+                        await cache.delete(`${window.location.origin}/lista-compras`);
+                    }
+                } catch (err) {
+                    console.error("Erro ao limpar cache:", err);
+                }
+            }
+
+            // Usar o navigate do React Router para ir para a página de login
+            navigate('/login', { replace: true });
+
+            // Se a navegação falhar, tentar recarregar a página
+            setTimeout(() => {
+                if (window.location.pathname !== '/login') {
+                    window.location.href = '/login';
+                }
+            }, 100);
+
+        } catch (error) {
+            console.error("Erro ao fazer logout:", error);
+            // Fallback: redirecionar diretamente
+            window.location.href = '/login';
+        } finally {
+            setLoading(false);
+        }
     };
 
     const getNeededQuantity = (product: AppProduct) => {
@@ -152,12 +202,22 @@ const ShoppingList = () => {
                 </div>
             )}
 
-            <button
-                className="mt-8 w-full max-w-md py-3 bg-[#444444] text-white text-xl font-bold rounded"
-                onClick={handleBackToHome}
-            >
-                Voltar para Produtos
-            </button>
+            <div className="w-full max-w-md space-y-4 mt-8">
+                <button
+                    className="w-full py-3 bg-[#444444] text-white text-xl font-bold rounded"
+                    onClick={handleBackToHome}
+                >
+                    Voltar para Produtos
+                </button>
+
+                <button
+                    className="w-full py-3 bg-[#444444] text-white text-xl font-bold rounded"
+                    onClick={handleExit}
+                    disabled={loading}
+                >
+                    {loading ? "Saindo..." : "Sair"}
+                </button>
+            </div>
 
             <EditModal
                 product={editProduct}
