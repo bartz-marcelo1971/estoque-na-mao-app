@@ -1,6 +1,6 @@
 {
-    "name": "Stok na Mão",
-    "short_name": "Stok na Mão",
+    "name": "Stock na Mão",
+    "short_name": "Stock na Mão",
     "description": "Aplicativo para controle de estoque e lista de compras",
     "start_url": "/",
     "display": "standalone",

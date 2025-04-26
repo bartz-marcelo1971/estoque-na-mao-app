@@ -73,16 +73,18 @@ const PWAInstallPrompt = () => {
                 <X size={20} />
             </button>
 
-            <h3 className="text-lg font-bold mb-2">Instalar Stok na Mão</h3>
-            <p className="text-sm mb-4">Instale nosso aplicativo para uso offline e melhor experiência!</p>
+            <div className="p-4 bg-white rounded-lg shadow-lg max-w-sm mx-auto">
+                <h3 className="text-lg font-bold mb-2">Instalar Stock na Mão</h3>
+                <p className="text-sm mb-4">Instale nosso aplicativo para uso offline e melhor experiência!</p>
 
-            <div className="flex justify-center">
-                <Button
-                    onClick={handleInstall}
-                    className="bg-white text-[#333333] hover:bg-gray-200"
-                >
-                    Instalar
-                </Button>
+                <div className="flex justify-center">
+                    <Button
+                        onClick={handleInstall}
+                        className="bg-white text-[#333333] hover:bg-gray-200"
+                    >
+                        Instalar
+                    </Button>
+                </div>
             </div>
         </div>
     );

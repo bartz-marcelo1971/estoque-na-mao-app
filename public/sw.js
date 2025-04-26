@@ -1,5 +1,5 @@
 // Nome do cache
-const CACHE_NAME = 'stok-na-mao-v1';
+const CACHE_NAME = 'stock-na-mao-v1';
 
 // Lista de recursos para cache
 const urlsToCache = [

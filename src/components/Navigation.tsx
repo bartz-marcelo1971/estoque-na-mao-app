@@ -18,7 +18,7 @@ const Navigation = () => {
                 <div className="flex items-center space-x-1">
                     <Link to="/" className="font-bold text-xl flex items-center">
                         <Package className="mr-2 h-5 w-5" />
-                        Stok na Mão
+                        Stock na Mão
                     </Link>
                 </div>
 
