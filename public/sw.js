@@ -1,26 +1,24 @@
 // Nome do cache
-const CACHE_NAME = 'stock-na-mao-v1';
+const CACHE_NAME = 'stock-na-mao-v3';
 
-// Lista de recursos para cache
+// Lista de recursos para cachear inicialmente
 const urlsToCache = [
     '/',
     '/index.html',
     '/manifest.json',
     '/favicon.ico',
-    '/login',  // Adicionar página de login para garantir que esteja em cache
-];
-
-// URLs de rotas principais
-const APP_ROUTES = [
-    '/',
+    '/login',
     '/produtos',
-    '/lista-compras',
-    '/login'
+    '/lista-compras'
 ];
 
-// Instalar o service worker e criar cache
+// Instalação do service worker - cria o cache inicial
 self.addEventListener('install', (event) => {
     console.log('[Service Worker] Instalando');
+
+    // Força a ativação imediata do novo service worker
+    self.skipWaiting();
+
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then((cache) => {
@@ -30,62 +28,14 @@ self.addEventListener('install', (event) => {
     );
 });
 
-// Interceptar navegação entre rotas principais do app para páginas do SPA
-self.addEventListener('fetch', (event) => {
-    const url = new URL(event.request.url);
-
-    // Verificar se é uma navegação para uma rota principal da aplicação
-    // ou qualquer navegação interna do aplicativo (SPA)
-    if (event.request.mode === 'navigate') {
-        // Se for uma navegação interna, responder com o index.html para permitir
-        // que o React Router assuma o controle
-        event.respondWith(
-            fetch(event.request).catch(() => {
-                console.log('[Service Worker] Falha ao buscar, retornando index.html para', url.pathname);
-                return caches.match('/index.html');
-            })
-        );
-        return;
-    }
-
-    // Verificar se é uma solicitação de API ou autenticação - não fazer cache
-    if (url.pathname.includes('/api/') ||
-        url.pathname.includes('/auth/') ||
-        url.hostname.includes('supabase')) {
-        event.respondWith(
-            fetch(event.request).catch(() => {
-                return new Response(JSON.stringify({ error: 'Offline' }), {
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            })
-        );
-        return;
-    }
-
-    // Para outros recursos, usar estratégia de network first com fallback para cache
-    event.respondWith(
-        fetch(event.request)
-            .then((response) => {
-                // Se a resposta for válida, armazenar no cache
-                if (event.request.method === 'GET' && response.status === 200) {
-                    const responseToCache = response.clone();
-                    caches.open(CACHE_NAME)
-                        .then((cache) => {
-                            cache.put(event.request, responseToCache);
-                        });
-                }
-                return response;
-            })
-            .catch(() => {
-                // Se falhar, tentar obter do cache
-                return caches.match(event.request);
-            })
-    );
-});
-
-// Limpar caches antigos quando uma nova versão do SW for ativada
+// Ativação do service worker - limpa caches antigos
 self.addEventListener('activate', (event) => {
     console.log('[Service Worker] Ativando');
+
+    // Toma controle imediato de todas as páginas na aplicação
+    event.waitUntil(clients.claim());
+
+    // Limpa caches antigos
     const cacheWhitelist = [CACHE_NAME];
     event.waitUntil(
         caches.keys().then((cacheNames) => {
@@ -98,5 +48,65 @@ self.addEventListener('activate', (event) => {
                 })
             );
         })
+    );
+});
+
+// Interceptação de requisições fetch
+self.addEventListener('fetch', (event) => {
+    const url = new URL(event.request.url);
+    const request = event.request;
+
+    // Console para depuração
+    console.log('[Service Worker] Interceptando fetch para:', url.pathname);
+
+    // Ignora requisições de API e autenticação
+    if (url.pathname.includes('/api/') ||
+        url.pathname.includes('/auth/') ||
+        url.hostname.includes('supabase')) {
+        event.respondWith(
+            fetch(request)
+                .catch(() => {
+                    return new Response(JSON.stringify({ error: 'Você está offline' }), {
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                })
+        );
+        return;
+    }
+
+    // Para requisições de navegação
+    if (request.mode === 'navigate') {
+        event.respondWith(
+            fetch(request)
+                .catch(() => {
+                    return caches.match('/index.html');
+                })
+        );
+        return;
+    }
+
+    // Para todos os outros recursos (assets, scripts, estilos, etc.)
+    event.respondWith(
+        caches.match(request)
+            .then((response) => {
+                if (response) {
+                    return response;
+                }
+
+                return fetch(request)
+                    .then((response) => {
+                        if (!response || response.status !== 200 || response.type !== 'basic') {
+                            return response;
+                        }
+
+                        const responseToCache = response.clone();
+                        caches.open(CACHE_NAME)
+                            .then((cache) => {
+                                cache.put(request, responseToCache);
+                            });
+
+                        return response;
+                    });
+            })
     );
 }); 

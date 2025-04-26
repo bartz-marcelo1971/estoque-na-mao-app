@@ -25,9 +25,13 @@ const ShoppingList = () => {
             setLoading(true);
             const lowStockProducts = await getLowStockProducts();
             console.log("Produtos com estoque baixo:", lowStockProducts);
-            setProducts(lowStockProducts);
+            // Ordenar produtos por nome
+            const sortedProducts = [...lowStockProducts].sort((a, b) =>
+                a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })
+            );
+            setProducts(sortedProducts);
 
-            if (lowStockProducts.length === 0) {
+            if (sortedProducts.length === 0) {
                 toast({
                     title: "Informação",
                     description: "Não há produtos com estoque abaixo do mínimo."
@@ -48,7 +52,11 @@ const ShoppingList = () => {
     const loadAllProducts = async () => {
         try {
             const productsList = await getProducts();
-            setAllProducts(productsList);
+            // Ordenar todos os produtos por nome
+            const sortedProducts = [...productsList].sort((a, b) =>
+                a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })
+            );
+            setAllProducts(sortedProducts);
         } catch (error) {
             console.error("Erro ao carregar todos os produtos:", error);
         }

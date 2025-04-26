@@ -244,11 +244,11 @@ const Products = () => {
   const handleExit = async () => {
     try {
       setLoading(true);
+
       // Fazer logout do usuário
       await signOut();
 
-      // Limpar o estado do usuário (mas manter configurações PWA)
-      // Não limpar 'pwaPromptDismissed' para manter preferências do usuário sobre o prompt de instalação
+      // Limpar o estado do usuário (mantendo apenas configurações PWA)
       const pwaPromptDismissed = localStorage.getItem('pwaPromptDismissed');
       localStorage.clear();
       if (pwaPromptDismissed) {
@@ -257,13 +257,44 @@ const Products = () => {
 
       // Determinar URL base para navegação
       const baseUrl = window.location.origin;
+      const loginUrl = `${baseUrl}/login`;
 
-      // Forçar a navegação usando window.location em vez do React Router
-      // para garantir que funcione tanto no navegador quanto no PWA
-      window.location.href = `${baseUrl}/login`;
+      console.log("Navegando para:", loginUrl);
+
+      // Limpar qualquer cache do service worker para a página atual
+      if ('caches' in window) {
+        try {
+          const cachesAvailable = await window.caches.keys();
+          for (const cacheName of cachesAvailable) {
+            const cache = await window.caches.open(cacheName);
+            // Remover a página atual do cache para garantir que ela não seja servida após o logout
+            await cache.delete(window.location.href);
+          }
+        } catch (err) {
+          console.error("Erro ao limpar cache:", err);
+        }
+      }
+
+      // Função para tentar diferentes abordagens de navegação
+      const navigateToLogin = () => {
+        try {
+          // Abordagem 1: Usando replace do location (método mais direto)
+          window.location.replace(loginUrl);
+        } catch (err) {
+          console.error("Erro na navegação para login:", err);
+
+          // Abordagem 2: Se falhar, tenta window.location.href
+          window.location.href = loginUrl;
+        }
+      };
+
+      // Executar a navegação
+      navigateToLogin();
+
     } catch (error) {
       console.error("Erro ao fazer logout:", error);
-      // Mesmo em caso de erro, tentar navegar para a tela de login
+
+      // Mesmo em caso de erro, tentar a navegação como fallback
       window.location.href = `${window.location.origin}/login`;
     } finally {
       setLoading(false);
