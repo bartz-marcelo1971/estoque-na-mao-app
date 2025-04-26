@@ -35,11 +35,13 @@ self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
     // Verificar se é uma navegação para uma rota principal da aplicação
-    // para garantir que o SPA funcione corretamente
-    if (event.request.mode === 'navigate' &&
-        APP_ROUTES.some(route => url.pathname === route)) {
+    // ou qualquer navegação interna do aplicativo (SPA)
+    if (event.request.mode === 'navigate') {
+        // Se for uma navegação interna, responder com o index.html para permitir
+        // que o React Router assuma o controle
         event.respondWith(
             fetch(event.request).catch(() => {
+                console.log('[Service Worker] Falha ao buscar, retornando index.html para', url.pathname);
                 return caches.match('/index.html');
             })
         );

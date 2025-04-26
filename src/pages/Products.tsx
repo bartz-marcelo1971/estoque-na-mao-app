@@ -258,26 +258,13 @@ const Products = () => {
       // Determinar URL base para navegação
       const baseUrl = window.location.origin;
 
-      // Usar o navigate com replace para garantir que não haja histórico
-      // e window.location como fallback para PWA
-      navigate('/login', { replace: true });
-
-      // Garantir uma navegação bem-sucedida no PWA com timeout
-      setTimeout(() => {
-        // Se ainda estiver na mesma página após tentar o navigate, força usando location
-        if (window.location.pathname !== '/login') {
-          window.location.href = `${baseUrl}/login`;
-        }
-      }, 100);
+      // Forçar a navegação usando window.location em vez do React Router
+      // para garantir que funcione tanto no navegador quanto no PWA
+      window.location.href = `${baseUrl}/login`;
     } catch (error) {
       console.error("Erro ao fazer logout:", error);
       // Mesmo em caso de erro, tentar navegar para a tela de login
-      navigate('/login', { replace: true });
-
-      // Garantir a navegação mesmo em caso de falha do navigate
-      setTimeout(() => {
-        window.location.href = `${window.location.origin}/login`;
-      }, 100);
+      window.location.href = `${window.location.origin}/login`;
     } finally {
       setLoading(false);
     }
